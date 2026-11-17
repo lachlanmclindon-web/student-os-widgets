@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wheel of Life</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg: #191919; --ink: #e8efe9; --muted: #8aa396; --teal: #3d8b73; --gold: #c9a227; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: "VT323", monospace; }
+    body { display: flex; align-items: stretch; justify-content: center; padding: 8px; }
+    .wrap { width: 100%; max-width: 420px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center; }
+    @media (max-width: 360px) { .wrap { grid-template-columns: 1fr; } }
+    h1 { font-family: "Press Start 2P", monospace; font-size: 9px; color: var(--gold); margin: 0 0 8px; grid-column: 1 / -1; }
+    svg { width: 100%; height: auto; max-height: 240px; display: block; }
+    .sliders { display: grid; gap: 4px; font-size: 15px; }
+    label { display: grid; grid-template-columns: 1fr 36px; gap: 4px; align-items: center; color: var(--muted); }
+    input[type="range"] { width: 100%; accent-color: var(--teal); }
+    .score { color: var(--ink); text-align: right; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Wheel of Life</h1>
+    <svg id="chart" viewBox="0 0 280 280" role="img" aria-label="Wheel of Life radar chart"></svg>
+    <div class="sliders" id="sliders"></div>
+  </div>
+  <script>
+    const KEY = "student-os-wheel-scores";
+    const AREAS = ["Health", "Study", "Career", "Finance", "Relationships", "Fun", "Personal growth", "Environment"];
+    const saved = JSON.parse(localStorage.getItem(KEY) || "{}");
+    const scores = AREAS.map((a) => Number(saved[a] ?? 5));
+    const CX = 140, CY = 140, R = 88, MAX = 10;
+
+    const sliders = document.getElementById("sliders");
+    AREAS.forEach((area, i) => {
+      const label = document.createElement("label");
+      label.innerHTML = area + ' <span class="score" id="v' + i + '">' + scores[i] + '</span><input type="range" min="1" max="10" step="1" value="' + scores[i] + '" data-i="' + i + '" />';
+      sliders.appendChild(label);
+    });
+
+    function angle(i) { return -Math.PI / 2 + (i * 2 * Math.PI) / AREAS.length; }
+    function pt(i, value) {
+      const a = angle(i);
+      const r = R * (value / MAX);
+      return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
+    }
+    function labelPt(i) {
+      const a = angle(i);
+      return [CX + (R + 22) * Math.cos(a), CY + (R + 22) * Math.sin(a)];
+    }
+
+    const svg = document.getElementById("chart");
+    const ns = "http://www.w3.org/2000/svg";
+    function el(name, attrs) {
+      const node = document.createElementNS(ns, name);
+      Object.entries(attrs).forEach(([k, v]) => node.setAttribute(k, v));
+      return node;
+    }
+
+    const grid = el("g", {});
+    for (let ring = 1; ring <= 5; ring++) {
+      const pts = AREAS.map((_, i) => pt(i, ring * 2).join(",")).join(" ");
+      grid.appendChild(el("polygon", { points: pts, fill: "none", stroke: "#333", "stroke-width": "1" }));
+    }
+    AREAS.forEach((_, i) => {
+      const [x, y] = pt(i, MAX);
+      grid.appendChild(el("line", { x1: CX, y1: CY, x2: x, y2: y, stroke: "#333", "stroke-width": "1" }));
+    });
+    svg.appendChild(grid);
+
+    const area = el("polygon", { fill: "rgba(61, 139, 115, 0.35)", stroke: "#3d8b73", "stroke-width": "2" });
+    const dots = el("g", {});
+    const labels = el("g", {});
+    AREAS.forEach((name, i) => {
+      const [lx, ly] = labelPt(i);
+      const a = angle(i);
+      const anchor = Math.cos(a) > 0.2 ? "start" : Math.cos(a) < -0.2 ? "end" : "middle";
+      const baseline = Math.sin(a) > 0.4 ? "hanging" : Math.sin(a) < -0.4 ? "auto" : "middle";
+      const t = el("text", { x: lx, y: ly, fill: "#e8efe9", "font-family": "VT323, monospace", "font-size": "11", "text-anchor": anchor, "dominant-baseline": baseline });
+      t.textContent = name;
+      labels.appendChild(t);
+      dots.appendChild(el("circle", { r: 3.5, fill: "#c9a227" }));
+    });
+    svg.appendChild(area);
+    svg.appendChild(dots);
+    svg.appendChild(labels);
+
+    function draw() {
+      area.setAttribute("points", AREAS.map((_, i) => pt(i, scores[i]).join(",")).join(" "));
+      Array.from(dots.children).forEach((dot, i) => {
+        const [x, y] = pt(i, scores[i]);
+        dot.setAttribute("cx", x);
+        dot.setAttribute("cy", y);
+      });
+    }
+    function save() {
+      const store = {};
+      AREAS.forEach((a, idx) => { store[a] = scores[idx]; });
+      localStorage.setItem(KEY, JSON.stringify(store));
+    }
+
+    sliders.addEventListener("input", (e) => {
+      if (e.target.dataset.i == null) return;
+      const i = Number(e.target.dataset.i);
+      scores[i] = Number(e.target.value);
+      document.getElementById("v" + i).textContent = scores[i];
+      save();
+      draw();
+    });
+    draw();
+  </script>
+</body>
+</html>

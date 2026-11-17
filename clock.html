@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clock</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #191919;
+      --ink: #e8efe9;
+      --muted: #8aa396;
+      --teal: #3d8b73;
+      --teal-dim: #2d6a5a;
+      --gold: #c9a227;
+      --track: #2a2a2a;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "VT323", monospace;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .clock {
+      width: min(42vw, 140px);
+      height: min(42vw, 140px);
+      border-radius: 50%;
+      border: 3px solid var(--teal);
+      background: radial-gradient(circle at 40% 35%, #242c28 0%, #151515 70%);
+      position: relative;
+      box-shadow: 0 0 0 2px #111, 0 0 16px rgba(61, 139, 115, 0.35);
+    }
+    .tick {
+      position: absolute;
+      left: 50%;
+      top: 6px;
+      width: 2px;
+      height: 8px;
+      background: var(--muted);
+      transform-origin: 50% calc(min(21vw, 70px) - 6px);
+    }
+    .tick.hour { height: 11px; background: var(--gold); }
+    .hand {
+      position: absolute;
+      left: 50%;
+      bottom: 50%;
+      transform-origin: 50% 100%;
+      border-radius: 2px;
+    }
+    .hour-hand { width: 4px; height: 32%; background: var(--ink); margin-left: -2px; }
+    .minute-hand { width: 3px; height: 42%; background: var(--teal); margin-left: -1.5px; }
+    .second-hand { width: 2px; height: 46%; background: var(--gold); margin-left: -1px; }
+    .cap {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 8px;
+      height: 8px;
+      margin: -4px 0 0 -4px;
+      border-radius: 50%;
+      background: var(--gold);
+    }
+    .digital {
+      font-family: "Press Start 2P", monospace;
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--gold);
+    }
+    .bars { width: 100%; display: grid; gap: 7px; }
+    .row { display: grid; grid-template-columns: 42px 1fr 36px; gap: 6px; align-items: center; }
+    .label { font-size: 16px; color: var(--muted); text-transform: uppercase; }
+    .track { height: 8px; background: var(--track); border: 1px solid #333; overflow: hidden; }
+    .fill { height: 100%; background: linear-gradient(90deg, var(--teal-dim), var(--teal)); width: 0; }
+    .pct { font-size: 15px; text-align: right; color: var(--ink); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="clock" id="clock" aria-hidden="true">
+      <div class="hand hour-hand" id="hour"></div>
+      <div class="hand minute-hand" id="minute"></div>
+      <div class="hand second-hand" id="second"></div>
+      <div class="cap"></div>
+    </div>
+    <div class="digital" id="digital">--:--:--</div>
+    <div class="bars">
+      <div class="row"><span class="label">Year</span><div class="track"><div class="fill" id="yearFill"></div></div><span class="pct" id="yearPct">0%</span></div>
+      <div class="row"><span class="label">Month</span><div class="track"><div class="fill" id="monthFill"></div></div><span class="pct" id="monthPct">0%</span></div>
+      <div class="row"><span class="label">Week</span><div class="track"><div class="fill" id="weekFill"></div></div><span class="pct" id="weekPct">0%</span></div>
+    </div>
+  </div>
+  <script>
+    const clock = document.getElementById("clock");
+    for (let i = 0; i < 12; i++) {
+      const tick = document.createElement("div");
+      tick.className = "tick hour";
+      tick.style.transform = "translateX(-50%) rotate(" + (i * 30) + "deg)";
+      clock.appendChild(tick);
+    }
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function setBar(id, pct) {
+      const clamped = Math.max(0, Math.min(100, pct));
+      document.getElementById(id + "Fill").style.width = clamped + "%";
+      document.getElementById(id + "Pct").textContent = Math.round(clamped) + "%";
+    }
+    function tick() {
+      const now = new Date();
+      const h = now.getHours();
+      const m = now.getMinutes();
+      const s = now.getSeconds();
+      const ms = now.getMilliseconds();
+      document.getElementById("hour").style.transform = "rotate(" + ((h % 12) * 30 + m * 0.5) + "deg)";
+      document.getElementById("minute").style.transform = "rotate(" + (m * 6 + s * 0.1) + "deg)";
+      document.getElementById("second").style.transform = "rotate(" + (s * 6 + ms * 0.006) + "deg)";
+      document.getElementById("digital").textContent = pad(h) + ":" + pad(m) + ":" + pad(s);
+
+      const startYear = new Date(now.getFullYear(), 0, 1);
+      const endYear = new Date(now.getFullYear() + 1, 0, 1);
+      setBar("year", (now - startYear) / (endYear - startYear) * 100);
+
+      const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      setBar("month", (now - startMonth) / (endMonth - startMonth) * 100);
+
+      const day = (now.getDay() + 6) % 7; // Monday = 0
+      const startWeek = new Date(now);
+      startWeek.setHours(0, 0, 0, 0);
+      startWeek.setDate(now.getDate() - day);
+      const endWeek = new Date(startWeek);
+      endWeek.setDate(startWeek.getDate() + 7);
+      setBar("week", (now - startWeek) / (endWeek - startWeek) * 100);
+    }
+    tick();
+    setInterval(tick, 250);
+  </script>
+</body>
+</html>
